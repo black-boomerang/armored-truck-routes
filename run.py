@@ -1,6 +1,7 @@
 from solvers import DensitySolver
 from task import BusinessLogic
-from utils import get_data, evaluate
+from tools import evaluate
+from utils import get_data
 
 if __name__ == "__main__":
     terminals, time_matrix = get_data()

@@ -5,7 +5,7 @@ from scipy.special import logsumexp
 
 from task import BusinessLogic
 from utils import tsp_solution
-from .base_solver import BaseSolver
+from base_solver import BaseSolver
 
 
 class DensitySolver(BaseSolver):
@@ -25,9 +25,9 @@ class DensitySolver(BaseSolver):
             terminals = np.arange(self.terminals_num)
         start_density = self.remains[terminals] / self.bl.terminal_limit
         start_density += self.days_after_service[terminals] / \
-            self.bl.non_serviced_days
+                         self.bl.non_serviced_days
         start_density = (
-            start_density / np.linalg.norm(start_density)).clip(DensitySolver.EPSILON)
+                start_density / np.linalg.norm(start_density)).clip(DensitySolver.EPSILON)
 
         sub_time_matrix = self.time_matrix[np.ix_(terminals, terminals)]
         log_density = logsumexp(-sub_time_matrix / self.sigma +
