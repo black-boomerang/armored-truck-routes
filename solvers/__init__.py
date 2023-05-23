@@ -1,2 +1,2 @@
-from .base_solver import BaseSolver
-from .density_solver import DensitySolver
+from solvers.base_solver import BaseSolver
+from solvers.density_solver import DensitySolver
