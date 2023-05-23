@@ -5,7 +5,7 @@ from scipy.special import logsumexp
 
 from task import BusinessLogic
 from utils import tsp_solution
-from solvers.base_solver import BaseSolver
+from .base_solver import BaseSolver
 
 
 class DensitySolver(BaseSolver):
@@ -24,22 +24,18 @@ class DensitySolver(BaseSolver):
         if terminals is None:
             terminals = np.arange(self.terminals_num)
         start_density = self.remains[terminals] / self.bl.terminal_limit
-        start_density += self.days_after_service[terminals] / \
-            self.bl.non_serviced_days
-        start_density = (
-            start_density / np.linalg.norm(start_density)).clip(DensitySolver.EPSILON)
+        start_density += self.days_after_service[terminals] / self.bl.non_serviced_days
+        start_density = (start_density / np.linalg.norm(start_density)).clip(DensitySolver.EPSILON)
 
         sub_time_matrix = self.time_matrix[np.ix_(terminals, terminals)]
-        log_density = logsumexp(-sub_time_matrix / self.sigma +
-                                np.log(start_density)[None, :], axis=1)
+        log_density = logsumexp(-sub_time_matrix / self.sigma + np.log(start_density)[None, :], axis=1)
         return log_density
 
     def get_clusters(self, centers: np.ndarray) -> List[np.ndarray]:
         """ Выделяем кластера на основе времени ОТ терминалов-центров """
         k = len(centers)
         terminals = np.arange(self.terminals_num)
-        distances = self.time_matrix[centers[None, :],
-                                     terminals[:, None]]  # (terminals_num x k)
+        distances = self.time_matrix[centers[None, :], terminals[:, None]]  # (terminals_num x k)
         clusters_inds = distances.argmin(axis=1)
         clusters = []
         for cluster in range(k):
@@ -54,8 +50,7 @@ class DensitySolver(BaseSolver):
             cluster_i: i for cluster_i, i in enumerate(cluster)}
         cluster_density = density[cluster]
         cluster_sorted_indecies = (-cluster_density).argsort()
-        cluster_ind_to_ind = {cluster_i: cluster_ind_to_ind[i] for cluster_i, i in enumerate(
-            cluster_sorted_indecies)}
+        cluster_ind_to_ind = {cluster_i: cluster_ind_to_ind[i] for cluster_i, i in enumerate(cluster_sorted_indecies)}
 
         left = 0
         right = len(cluster)
@@ -63,8 +58,7 @@ class DensitySolver(BaseSolver):
         while left < right:
             serviced_terminals = right - (right - left) // 2
             subcluster = cluster_sorted_indecies[:serviced_terminals]
-            route, r_time = tsp_solution(
-                self.time_matrix[subcluster[None, :], subcluster[:, None]])
+            route, r_time = tsp_solution(self.time_matrix[subcluster[None, :], subcluster[:, None]])
             r_time += serviced_terminals * self.bl.encashment_time
             if r_time <= self.bl.working_day_time:
                 best_route = route
@@ -73,16 +67,20 @@ class DensitySolver(BaseSolver):
                 right = serviced_terminals - 1
         return [cluster_ind_to_ind[terminal] for terminal in best_route]
 
+    def get_cluster(self, center: int) -> np.ndarray:
+        """ Выделяем кластер на основе времени ОТ терминала-центра """
+        return np.argpartition(self.time_matrix[center, :], 72)[:72]
+
     def get_routes(self) -> List[List[int]]:
         """
         Получить маршруты для всех броневиков на текущий день.
         :return: список маршрутов для каждого броневика
         """
-        self.density = self.get_density()
-        best_terminals = np.argpartition(-self.density,
-                                         self.armored_num)[:self.armored_num]
-        clusters = self.get_clusters(best_terminals)
+        cur_terminals = np.arange(self.terminals_num)
         routes = []
-        for cluster in clusters:
-            routes.append(self.get_cluster_route(cluster, self.density))
+        for i in range(self.armored_num):
+            density = self.get_density(cur_terminals)
+            best_terminal = np.argmax(-density)
+            cluster = self.get_cluster(best_terminal)
+            routes.append(self.get_cluster_route(cluster, density))
         return routes
