@@ -15,6 +15,6 @@ def evaluate(solver: BaseSolver, terminals: pd.DataFrame, first_day: int = 1, la
     for day in range(first_day, last_day + 1):
         solver.get_routes()
         expenses += get_day_expenses()
-        solver.update(terminals[f'day {day}'])
+        solver.update(terminals[f'day {day}'].values)
 
     print(f'Издержки: {expenses}')
