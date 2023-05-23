@@ -67,9 +67,11 @@ class DensitySolver(BaseSolver):
                 right = serviced_terminals - 1
         return [cluster_ind_to_ind[terminal] for terminal in best_route]
 
-    def get_cluster(self, center: int) -> np.ndarray:
+    def get_cluster(self, terminals: np.ndarray, center: int) -> np.ndarray:
         """ Выделяем кластер на основе времени ОТ терминала-центра """
-        return np.argpartition(self.time_matrix[center, :], 72)[:72]
+        time_to_terminals = np.full(self.terminals_num, 10000)
+        time_to_terminals[terminals] = self.time_matrix[center, terminals]
+        return np.argpartition(time_to_terminals, 72)[:72]
 
     def get_routes(self) -> List[List[int]]:
         """
@@ -79,8 +81,10 @@ class DensitySolver(BaseSolver):
         cur_terminals = np.arange(self.terminals_num)
         routes = []
         for i in range(self.armored_num):
-            density = self.get_density(cur_terminals)
-            best_terminal = np.argmax(-density)
-            cluster = self.get_cluster(best_terminal)
+            density = np.full(self.terminals_num, -10000)
+            density[cur_terminals] = self.get_density(cur_terminals)
+            best_terminal = cur_terminals[np.argmax(-density)]
+            cluster = self.get_cluster(cur_terminals, best_terminal)
             routes.append(self.get_cluster_route(cluster, density))
+            cur_terminals = np.setdiff1d(cur_terminals, cluster)
         return routes
