@@ -1,1 +1,1 @@
-DATA_ROOT = 'Датасеты'
+DATA_ROOT = 'data'
