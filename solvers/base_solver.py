@@ -20,7 +20,7 @@ class BaseSolver(ABC):
     def update(self, incomes: np.ndarray) -> None:
         """ Обновить состояние решателя на новый день """
         self.remains += incomes
-        self.days_after_service -= 1
+        self.days_after_service += 1
 
     @abstractmethod
     def get_routes(self) -> List[List[int]]:

@@ -1,6 +1,7 @@
 from typing import Optional, List
 
 import numpy as np
+from scipy.special import logsumexp
 
 from task import BusinessLogic
 from utils import tsp_solution
@@ -12,7 +13,7 @@ class DensitySolver(BaseSolver):
     EPSILON = 1e-9
 
     def __init__(self, remains: np.ndarray, time_matrix: np.ndarray, business_logic: BusinessLogic,
-                 armored_num: int = 10, sigma: float = 10000):
+                 armored_num: int = 10, sigma: float = 50):
         super().__init__(remains, time_matrix, business_logic)
         self.armored_num = armored_num
         self.sigma = sigma  # константа, используемая при расчёте плотности (параметр гауссианы)
@@ -25,14 +26,15 @@ class DensitySolver(BaseSolver):
         start_density += self.days_after_service[terminals] / self.bl.non_serviced_days
         start_density = (start_density / np.linalg.norm(start_density)).clip(DensitySolver.EPSILON)
 
-        density = -self.time_matrix[terminals, terminals] / self.sigma + np.log(start_density)
-        return density
+        sub_time_matrix = self.time_matrix[np.ix_(terminals, terminals)]
+        log_density = logsumexp(-sub_time_matrix / self.sigma + np.log(start_density)[None, :], axis=1)
+        return log_density
 
     def get_clusters(self, centers: np.ndarray) -> List[np.ndarray]:
         """ Выделяем кластера на основе времени ОТ терминалов-центров """
         k = len(centers)
         terminals = np.arange(self.terminals_num)
-        distances = self.time_matrix[centers[np.newaxis, :], terminals[:, np.newaxis]]  # (terminals_num x k)
+        distances = self.time_matrix[centers[None, :], terminals[:, None]]  # (terminals_num x k)
         clusters_inds = distances.argmin(axis=1)
         clusters = []
         for cluster in range(k):
@@ -54,7 +56,7 @@ class DensitySolver(BaseSolver):
         while left < right:
             serviced_terminals = right - (right - left) // 2
             subcluster = cluster_sorted_indecies[:serviced_terminals]
-            route, r_time = tsp_solution(self.time_matrix[subcluster[np.newaxis, :], subcluster[:, np.newaxis]])
+            route, r_time = tsp_solution(self.time_matrix[subcluster[None, :], subcluster[:, None]])
             r_time += serviced_terminals * self.bl.encashment_time
             if r_time <= self.bl.working_day_time:
                 best_route = route
