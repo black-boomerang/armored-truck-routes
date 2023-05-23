@@ -15,6 +15,12 @@ def tsp_solution(distances: np.ndarray) -> Tuple[List[int], float]:
     sym_distances = np.maximum(np.tril(distances), np.triu(distances).T)
     sym_distances = sym_distances + sym_distances.T
     G = nx.from_numpy_array(sym_distances)
-    path = tsp(G, cycle=False)
-    path_distance = sum([G[path[i]][path[i + 1]]['weight'] for i in range(len(path) - 1)])
+
+    if sym_distances.shape[0] > 1:
+        path = tsp(G, cycle=False)
+    else:
+        path = [0]
+
+    path_distance = sum([G[path[i]][path[i + 1]]['weight']
+                        for i in range(len(path) - 1)])
     return path, path_distance
