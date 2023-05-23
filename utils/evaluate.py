@@ -5,7 +5,7 @@ from solvers import BaseSolver
 
 def get_day_expenses() -> float:
     """ Оценка издержек за текущий день """
-    pass
+    return 0
 
 
 def evaluate(solver: BaseSolver, terminals: pd.DataFrame, first_day: int = 1, last_day: int = 91) -> None:
