@@ -21,13 +21,10 @@ def get_data(data_path=None) -> Tuple[pd.DataFrame, np.ndarray]:
     terminals_num = len(points)
 
     # считываем доходы + считаем накопленные остатки на конец каждого дня
-    incomes_columns = ['TID', 'start_value'] + \
-        [f'day {i + 1}' for i in range(91)]
-    incomes = pd.read_excel(
-        terminal_data_path, sheet_name='Incomes', names=incomes_columns)
+    incomes_columns = ['TID', 'start_value'] + [f'day {i + 1}' for i in range(91)]
+    incomes = pd.read_excel(terminal_data_path, sheet_name='Incomes', names=incomes_columns)
     add_columns = [f'remains {i + 1}' for i in range(91)]
-    incomes[add_columns] = incomes[incomes_columns[1:]].values.cumsum(axis=1)[
-        :, 1:]
+    incomes[add_columns] = incomes[incomes_columns[1:]].values.cumsum(axis=1)[:, 1:]
 
     # объединяем доходы терминалов и их местоположения
     terminals = points.set_index('TID').join(

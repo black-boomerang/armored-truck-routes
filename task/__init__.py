@@ -1,1 +1,1 @@
-from task.business_logic import BusinessLogic
+from .business_logic import BusinessLogic

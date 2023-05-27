@@ -1,2 +1,2 @@
-from utils.data import get_data
-from utils.tsp import tsp_solution
+from .data import get_data
+from .tsp import tsp_solution
