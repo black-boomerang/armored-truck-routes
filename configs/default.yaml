@@ -1,0 +1,12 @@
+data:
+    path: data
+
+environment:
+    non_cashable_loss_percent_per_year: !!float 0.02
+    cashable_loss_percent: !!float 0.0001 # 0.01 / 100
+    cashable_min_loss: 100
+    non_serviced_days: 14
+    terminal_limit: 1_000_000
+    armored_price: 20_000
+    working_day_time: 720 # 12 * 60
+    encashment_time: 10

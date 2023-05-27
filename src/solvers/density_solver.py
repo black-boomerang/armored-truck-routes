@@ -3,18 +3,18 @@ from typing import Optional, List
 import numpy as np
 from scipy.special import logsumexp
 
-from task import BusinessLogic
-from utils import tsp_solution
-from .base_solver import BaseSolver
+from src.task import Environment
+from src.utils import tsp_solution
+from src.solvers.base_solver import BaseSolver
 
 
 class DensitySolver(BaseSolver):
     """ Решение на основе плотности """
     EPSILON = 1e-9
 
-    def __init__(self, remains: np.ndarray, time_matrix: np.ndarray, business_logic: BusinessLogic,
+    def __init__(self, remains: np.ndarray, time_matrix: np.ndarray, environment: Environment,
                  armored_num: int = 10, sigma: float = 50):
-        super().__init__(remains, time_matrix, business_logic)
+        super().__init__(remains, time_matrix, environment)
         self.armored_num = armored_num
         # константа, используемая при расчёте плотности (параметр гауссианы)
         self.sigma = sigma
@@ -23,9 +23,9 @@ class DensitySolver(BaseSolver):
         """ Функция расчёта плотности """
         if terminals is None:
             terminals = np.arange(self.terminals_num)
-        start_density = self.remains[terminals] / self.bl.terminal_limit
+        start_density = self.remains[terminals] / self.environment.terminal_limit
         start_density += self.days_after_service[terminals] / \
-            self.bl.non_serviced_days
+            self.environment.non_serviced_days
         start_density = (
             start_density / np.linalg.norm(start_density)).clip(DensitySolver.EPSILON)
 
@@ -65,8 +65,8 @@ class DensitySolver(BaseSolver):
             subcluster = cluster_sorted_indecies[:serviced_terminals]
             route, r_time = tsp_solution(
                 self.time_matrix[subcluster[None, :], subcluster[:, None]])
-            r_time += serviced_terminals * self.bl.encashment_time
-            if r_time <= self.bl.working_day_time:
+            r_time += serviced_terminals * self.environment.encashment_time
+            if r_time <= self.environment.working_day_time:
                 best_route = route
                 left = serviced_terminals
             else:
