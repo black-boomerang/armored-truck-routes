@@ -1,7 +1,8 @@
-import heapq
 import numpy as np
 from tqdm import trange
 from scipy.spatial.distance import pdist
+
+from src.clustering.prims_algorithm import mst_prims_algorithm
 
 
 class STPClustering:
@@ -9,63 +10,49 @@ class STPClustering:
         Implementation of Spanning Tree Pruning Clustering Algorithm
     '''
     
-    def __init__(self, metric='precomputed'):
+    def __init__(self, max_length=720, metric='precomputed', symmetric=False):
 
+        self.max_length = max_length
+        self.symmetric = symmetric
         self.metric = metric
         self.mst = None
 
-    def _construct_tree(self, edges, N):
-        tree = [[] for _ in range(N)]
-        for i, j in edges:
-            tree[i].append(j)
-            tree[j].append(i)
+    def _total_weight(self):
+        edges = []
+        for i in range(len(self.mst)):
+            for j in self.mst[i]:
+                edges.append((min(i, j), max(i, j)))
 
-        for i in range(len(tree)):
-            tree[i] = list(set(tree[i]))
+        edges = np.array(list(set(edges)))
+        total = (self.distances[edges[:, 0], edges[:, 1]]).sum() + 10 * len(self.distances)
+        edges = [tuple(edge) for edge in edges]
+        return total, edges
 
-        return tree
-
-    def _mst_prims_algorithm(self):
-        mst = []
-        visited = [False] * len(self.distances)
-        edges = [(self.distances[0, to], 0, to) for to in range(len(self.distances))]
-        heapq.heapify(edges)
-
-        while edges:
-            cost, frm, to = heapq.heappop(edges)
-            if not visited[to]:
-                visited[to] = True
-                mst.append((frm, to))
-                for to_next in range(len(self.distances)):
-                    cost = self.distances[to, to_next]
-                    if not visited[to_next]:
-                        heapq.heappush(edges, (cost, to, to_next))
-
-        tree = self._construct_tree(mst, len(self.distances))
-        return tree
-    
-    def _stp_clustering(self, i, visited, edges, max_length=720):
-        visited[i] = 1
-        sums = 0
+    def _optimal_cutting(self, i, visited, weights, total_weight):
+        visited[i] = True
+        total = 0
         for j in self.mst[i]:
             if not visited[j]:
-                s = self._stp_clustering(j, visited, edges, max_length)
+                local = self._optimal_cutting(j, visited, weights, total_weight)
+                # print(total_weight - local - self.distances[i, j])
+                weights[i, j] = min(local + 10, total_weight - local - 10 - self.distances[i, j])
+                weights[j, i] = min(local + 10, total_weight - local - 10 - self.distances[j, i])
+                total += local + self.distances[i, j] + 10
 
-                if s + self.distances[i, j] > max_length:
-                    edges.append((i, j))
-                else:
-                    sums += s + self.distances[i, j] + 10
-
-        return sums
+        return total
 
     def _dfs(self, i, bridges, visited, points):
         visited[i] = 1
         points.append(i)
+        total = 0
         for j in self.mst[i]:
             if not visited[j] and (i, j) not in bridges and (j, i) not in bridges:
-                self._dfs(j, bridges, visited, points)
+                local = self._dfs(j, bridges, visited, points)
+                total += local + self.distances[i, j] + 10
 
-    def fit(self, X):
+        return total
+
+    def _fit(self, X):
 
         if self.metric == 'precomputed':
             distances = X
@@ -73,25 +60,73 @@ class STPClustering:
             distances = pdist(X, metric=self.metric)
 
         self.distances = distances
-        self.mst = self._mst_prims_algorithm()
+        self.mst = mst_prims_algorithm(distances)
 
         return self
 
-    def predict(self, max_length):
-        bridges = []
+    def _predict(self, max_length):
+        total, edges = self._total_weight()
+
         visited = np.zeros(len(self.distances))
-        self._stp_clustering(0, visited, bridges, max_length=max_length)
-        bridges = list(set(bridges))
+        weights = np.zeros_like(self.distances)
+        self._optimal_cutting(0, visited, weights, total)
+        rows, cols = np.where(weights < max_length)
+        opt_idx = weights[weights < max_length].argmax()
+        opt_idx = rows[opt_idx], cols[opt_idx]
+        assert opt_idx in edges or opt_idx[::-1] in edges
+
+        points1, points2 = [], []
+        visited = np.zeros(len(self.distances))
+        s1 = self._dfs(opt_idx[0], [opt_idx], visited, points1)
+        s2 = self._dfs(opt_idx[1], [opt_idx], visited, points2)
+
+        if s1 < max_length and s2 < max_length:
+            return np.array(points1), np.array(points2)
+
+        clusters = np.array(points1) if s1 < s2 else np.array(points2)
+
+        return clusters, None
+    
+    def fit_predict(self, time_matrix):
+        time_matrix_copy = time_matrix.copy()
+        rests = [np.arange(len(time_matrix_copy))]
+        clusters_ = []
+
+        while True:
+
+            if self.symmetric:
+                inputs = np.maximum(np.tril(time_matrix_copy), np.triu(time_matrix_copy).T)
+                inputs = inputs + inputs.T
+            else:
+                inputs = time_matrix_copy
+
+            cluster = self._fit(inputs)._predict(max_length=self.max_length)
+            if cluster[1] is None:
+                cluster = cluster[0]
+                clusters_.append(cluster)
+            else:
+                clusters_.extend(cluster)
+                break
+            
+            rest = np.array(list(set(np.arange(len(time_matrix_copy))).difference(cluster)))
+            time_matrix_copy = time_matrix_copy[np.ix_(rest, rest)]
+            rests.append(rest)
+
+        clusters_ = clusters_[::-1]
+        rests = rests[::-1]
 
         clusters = []
-        visited = np.zeros(len(self.distances))
-        for i in range(len(self.distances)):
-            points = []
-            if not visited[i]:
-                self._dfs(i, bridges, visited, points)
-                clusters.append(np.array(points))
+        for i in range(len(clusters_)):
+            cluster = clusters_[i]
 
-        assert sum([len(cluster) for cluster in clusters]) == len(self.distances), 'some points weren"t clustered'
-        assert len(clusters) == len(bridges) + 1
+            if i > 0:
+                i -= 1
+
+            for r in rests[i:]:
+                cluster = r[cluster]
+
+            clusters.append(cluster)
+            assert len(list(set().union(*clusters))) == sum([len(c) for c in clusters])
 
         return clusters
+        
