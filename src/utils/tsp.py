@@ -21,6 +21,5 @@ def tsp_solution(distances: np.ndarray) -> Tuple[List[int], float]:
     else:
         path = [0]
 
-    path_distance = sum([G[path[i]][path[i + 1]]['weight']
-                        for i in range(len(path) - 1)])
+    path_distance = sum([G[path[i]][path[i + 1]]['weight'] for i in range(len(path) - 1)])
     return path, path_distance

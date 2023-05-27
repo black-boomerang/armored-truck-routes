@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Union
 
 import numpy as np
+import pandas as pd
 
 from src.task import Environment
 
@@ -17,8 +18,10 @@ class BaseSolver(ABC):
         self.days_after_service = np.zeros(self.terminals_num)
         self.environment = environment
 
-    def update(self, incomes: np.ndarray) -> None:
+    def update(self, incomes: Union[np.ndarray, pd.Series]) -> None:
         """ Обновить состояние решателя на новый день """
+        if isinstance(incomes, pd.Series):
+            incomes = incomes.values
         self.remains += incomes
         self.days_after_service += 1
 
