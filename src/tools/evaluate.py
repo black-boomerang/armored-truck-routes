@@ -1,6 +1,6 @@
 import pandas as pd
 
-from solvers import BaseSolver
+from src.solvers import BaseSolver
 
 
 def get_day_expenses() -> float:
