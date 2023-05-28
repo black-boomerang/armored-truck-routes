@@ -13,7 +13,7 @@ class PathReporter:
                  time_matrix: np.ndarray):
         
         self.n_trucks = n_trucks
-        self.terminal_ids = terminals
+        self.terminal_ids = terminal_ids
         self.service_time = 10 
         self.time_matrix = time_matrix
     
@@ -56,4 +56,4 @@ class PathReporter:
                 new_entry = pd.DataFrame(data, index=[len(df_roots)])
                 df_roots = pd.concat([df_roots, new_entry])
                 
-        df_roots.to_csv('roots.csv', index=None)
+        df_roots.to_csv('./reports/routes.csv', index=None)
