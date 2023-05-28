@@ -43,19 +43,19 @@ class ClusteringSolver(BaseSolver):
         times = self.days_after_service
         assert times.max() < self.environment.non_serviced_days
 
-        # days_before_deadline = 1
-        # idx = list(set(np.concatenate([
-        #     np.where(times == self.environment.non_serviced_days - days_before_deadline)[0],
-        #     np.where(remains < 0.1)[0]
-        # ])))
-        # # print(len(idx))
-        # assert len(idx) <= self.num_routes_per_day
+        days_before_deadline = 1
+        idx = list(set(np.concatenate([
+            np.where(times == self.environment.non_serviced_days - days_before_deadline)[0],
+            np.where(remains < 0.1)[0]
+        ])))
+        # print(len(idx))
+        assert len(idx) <= self.num_routes_per_day
 
-        # times = times / self.environment.non_serviced_days
-        # cost = times
-        # idx = np.concatenate([np.argsort(-cost)[:(self.num_routes_per_day - len(idx))], idx])
-        cost = np.stack([times, remains, np.arange(len(times))], axis=1)
-        idx = np.array(sorted(cost, key=lambda element: (-element[0], element[1])))[:, 2].astype(int)[:self.num_routes_per_day]
+        times = times / self.environment.non_serviced_days
+        cost = times
+        idx = np.concatenate([np.argsort(-cost)[:(self.num_routes_per_day - len(idx))], idx])
+        # cost = np.stack([times, remains, np.arange(len(times))], axis=1)
+        # idx = np.array(sorted(cost, key=lambda element: (-element[0], element[1])))[:, 2].astype(int)[:self.num_routes_per_day]
         # print(idx)
 
         if idx is None:
@@ -80,7 +80,8 @@ class ClusteringSolver(BaseSolver):
 
         self.remains[idx[np.concatenate(paths)]] = 0.0
         self.days_after_service[idx[np.concatenate(paths)]] = -1.0
-    
+
+        assert (self.environment.terminal_limit - self.remains > 0).all()
         assert len(paths) < 10
 
         return paths
