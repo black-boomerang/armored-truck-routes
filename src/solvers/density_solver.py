@@ -4,18 +4,18 @@ from typing import Optional, List
 import numpy as np
 from scipy.special import logsumexp
 
+from src.solvers.base_solver import BaseSolver
 from src.task import Environment
 from src.utils import tsp_solution
-from src.solvers.base_solver import BaseSolver
 
 
 class DensitySolver(BaseSolver):
     """ Решение на основе плотности """
     EPSILON = 1e-9
 
-    def __init__(self, remains: np.ndarray, time_matrix: np.ndarray, environment: Environment,
-                 armored_num: int = 10, sigma: float = 50):
-        super().__init__(remains, time_matrix, environment)
+    def __init__(self, remains: np.ndarray, time_matrix: np.ndarray, business_logic: Environment,
+                 armored_num: int = 10, sigma: float = 7000):
+        super().__init__(remains, time_matrix, business_logic)
         self.armored_num = armored_num
         # константа, используемая при расчёте плотности (параметр гауссианы)
         self.sigma = sigma
@@ -25,13 +25,11 @@ class DensitySolver(BaseSolver):
         if terminals is None:
             terminals = np.arange(self.terminals_num)
         start_density = self.remains[terminals] / self.environment.terminal_limit
-        start_density += self.days_after_service[terminals] / \
-            self.environment.non_serviced_days
-        start_density = (
-            start_density / np.linalg.norm(start_density)).clip(DensitySolver.EPSILON)
+        start_density += self.days_after_service[terminals] / self.environment.non_serviced_days
+        start_density = (start_density / np.linalg.norm(start_density)).clip(DensitySolver.EPSILON)
 
         sub_time_matrix = self.time_matrix[np.ix_(terminals, terminals)]
-        log_density = logsumexp(-sub_time_matrix / self.sigma + np.log(start_density)[None, :], axis=1)
+        log_density = logsumexp(-sub_time_matrix / self.sigma * 0 + np.log(start_density)[None, :], axis=1)
         return log_density
 
     def get_clusters(self, centers: np.ndarray) -> List[np.ndarray]:
@@ -57,12 +55,11 @@ class DensitySolver(BaseSolver):
         right = len(cluster)
         while left < right:
             serviced_terminals = right - (right - left) // 2
-            subcluster = cluster_sorted_indecies[:serviced_terminals]
-            route, r_time = tsp_solution(
-                self.time_matrix[subcluster[None, :], subcluster[:, None]])
+            subcluster = np.array(
+                [cluster_ind_to_ind[terminal] for terminal in cluster_sorted_indecies[:serviced_terminals]])
+            route, r_time = tsp_solution(self.time_matrix[subcluster[None, :], subcluster[:, None]])
             r_time += serviced_terminals * self.environment.encashment_time
             if r_time <= self.environment.working_day_time:
-                best_route = route
                 left = serviced_terminals
             else:
                 right = serviced_terminals - 1
@@ -82,7 +79,22 @@ class DensitySolver(BaseSolver):
         Получить маршруты для всех броневиков на текущий день.
         :return: список маршрутов для каждого броневика
         """
-        cur_terminals = np.arange(self.terminals_num)
+        remains = (self.environment.terminal_limit - self.remains) / self.environment.terminal_limit
+        times = self.days_after_service
+        assert times.max() < self.environment.non_serviced_days
+
+        days_before_deadline = 1
+        idx = list(set(np.concatenate([
+            np.where(times == self.environment.non_serviced_days - days_before_deadline)[0],
+            np.where(remains < 0.1)[0]
+        ])))
+        assert len(idx) <= self.num_routes_per_day
+
+        times = times / self.environment.non_serviced_days
+        cost = times
+        idx = np.concatenate([np.argsort(-cost)[:(self.num_routes_per_day - len(idx))], idx])
+
+        cur_terminals = idx
         routes = []
         for i in range(self.armored_num):
             density = np.full(self.terminals_num, -np.inf)
@@ -94,5 +106,5 @@ class DensitySolver(BaseSolver):
             if len(cur_terminals) == 0:
                 break
         self.remains[list(itertools.chain(*routes))] = 0.0
-        self.days_after_service[list(itertools.chain(*routes))] = 0
+        self.days_after_service[list(itertools.chain(*routes))] = -1
         return routes

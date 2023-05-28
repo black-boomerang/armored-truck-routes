@@ -21,7 +21,6 @@ class ClusteringSolver(BaseSolver):
         super().__init__(remains, time_matrix, environment)
         self.armored_num = armored_num
         self.clustering = STPClustering(max_length=540)
-        self.num_routes_per_day = int(np.ceil(0.1 * len(time_matrix)))
 
     def tsp_solution(sellf, distances):
         sym_distances = np.maximum(np.tril(distances), np.triu(distances).T)
