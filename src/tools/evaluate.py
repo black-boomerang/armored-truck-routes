@@ -3,12 +3,12 @@ import pandas as pd
 
 from src.solvers import BaseSolver
 from src.utils import save_map, create_gif
-from src.report import create_report, create_final_report
+from src.report import create_report, create_final_report, PathReporter
 
 
 def evaluate(solver: BaseSolver, terminals: pd.DataFrame, first_day: int = 1, last_day: int = 91) -> None:
     """ Оценка издержек для заданного решателя """
-    expenses = 0.0
+    reported = PathReporter(n_trucks=9, terminal_ids=terminals['TID'], time_matrix=solver.time_matrix)
 
     remains = []
     cashable = []
@@ -30,6 +30,7 @@ def evaluate(solver: BaseSolver, terminals: pd.DataFrame, first_day: int = 1, la
         non_cashable.append(non_cashable_loss)
 
         solver.update(terminals[f'day {day}'].values)
+        reported.evaluate(paths, day=day)
         # save_map(paths, terminals, day)
 
     create_report(remains, terminals, filename='остатки на конец дня')
