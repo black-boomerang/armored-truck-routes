@@ -37,7 +37,6 @@ class ClusteringSolver(BaseSolver):
     def get_routes(self, idx=None) -> List[List[int]]:
 
         remains = (self.environment.terminal_limit - self.remains) / self.environment.terminal_limit
-        # print(remains.min())
 
         times = self.days_after_service
         assert times.max() < self.environment.non_serviced_days
@@ -47,15 +46,12 @@ class ClusteringSolver(BaseSolver):
             np.where(times == self.environment.non_serviced_days - days_before_deadline)[0],
             np.where(remains < 0.1)[0]
         ])))
-        # print(len(idx))
+
         assert len(idx) <= self.num_routes_per_day
 
         times = times / self.environment.non_serviced_days
         cost = times
         idx = np.concatenate([np.argsort(-cost)[:(self.num_routes_per_day - len(idx))], idx])
-        # cost = np.stack([times, remains, np.arange(len(times))], axis=1)
-        # idx = np.array(sorted(cost, key=lambda element: (-element[0], element[1])))[:, 2].astype(int)[:self.num_routes_per_day]
-        # print(idx)
 
         if idx is None:
             time_matrix = self.time_matrix

@@ -1,3 +1,6 @@
+import numpy as np
+
+
 class Environment:
     """Ограничения и данные задачи"""
 
@@ -26,4 +29,4 @@ class Environment:
         return self.non_cashable_loss_percent * cash
 
     def get_cashable_loss(self, cash: float):
-        return max(self.cashable_loss_percent * cash, self.cashable_min_loss)
+        return np.maximum(self.cashable_loss_percent * cash, self.cashable_min_loss)
