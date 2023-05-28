@@ -14,8 +14,8 @@ def create_report(data, terminals, filename):
 
 
 def create_final_report(cashable, non_cashable, N=10):
-    cashable = np.sum(cashable, axis=0)
-    non_cashable = np.sum(non_cashable, axis=0)
+    cashable = np.sum(cashable, axis=1)
+    non_cashable = np.sum(non_cashable, axis=1)
     total = cashable + non_cashable + N * 20000
 
     df = pd.DataFrame()
