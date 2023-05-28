@@ -1,6 +1,6 @@
-from src.solvers import DensitySolver
 from src.task import Environment
 from src.tools import evaluate
+from src.solvers import ClusteringSolver
 from src.utils import get_data, parse_args
 
 
@@ -24,8 +24,8 @@ def main(config=None):
         encashment_time=task_config['encashment_time']
     )
 
-    solver = DensitySolver(terminals['start_value'].values, time_matrix, environment)
-    evaluate(solver, terminals, 1, 1)
+    solver = ClusteringSolver(terminals['start_value'].values, time_matrix, environment)
+    evaluate(solver, terminals, 1, 91)
 
 
 if __name__ == "__main__":
