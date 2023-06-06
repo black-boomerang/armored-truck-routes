@@ -20,7 +20,7 @@ class ClusteringSolver(BaseSolver):
     def __init__(self, remains: np.ndarray, time_matrix: np.ndarray, environment: Environment, armored_num: int = 10):
         super().__init__(remains, time_matrix, environment)
         self.armored_num = armored_num
-        self.clustering = STPClustering(max_length=540)
+        self.clustering = STPClustering(max_length=540) # 540
 
     def tsp_solution(sellf, distances):
         sym_distances = np.maximum(np.tril(distances), np.triu(distances).T)
@@ -51,6 +51,7 @@ class ClusteringSolver(BaseSolver):
 
         times = times / self.environment.non_serviced_days
         cost = times
+        
         idx = np.concatenate([np.argsort(-cost)[:(self.num_routes_per_day - len(idx))], idx])
 
         if idx is None:
@@ -62,19 +63,20 @@ class ClusteringSolver(BaseSolver):
 
         paths = []
         times = []
+  
         for cluster in clusters:
             subset = time_matrix[np.ix_(cluster, cluster)]
             path = self.tsp_solution(subset)
 
             src, dst = path[:-1], path[1:]
             elapsed = (subset[src, dst]).sum() + 10 * len(path)
-            paths.append(cluster[path])
+            paths.append(idx[cluster[path]])
             times.append(elapsed)
 
         assert max(times) < self.environment.working_day_time
-
-        self.remains[idx[np.concatenate(paths)]] = 0.0
-        self.days_after_service[idx[np.concatenate(paths)]] = -1.0
+        
+        self.remains[np.concatenate(paths)] = 0.0
+        self.days_after_service[np.concatenate(paths)] = -1.0
 
         assert (self.environment.terminal_limit - self.remains > 0).all()
         assert len(paths) < 10
