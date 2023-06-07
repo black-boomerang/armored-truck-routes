@@ -15,7 +15,7 @@ class BaseSolver(ABC):
         self.time_matrix = time_matrix
         self.terminals_num = self.time_matrix.shape[0]
 
-        self.days_after_service = np.zeros(self.terminals_num)
+        self.days_after_service = np.zeros(self.terminals_num, dtype=int)
         self.environment = environment
 
         self.num_routes_per_day = int(np.ceil(0.1 * len(time_matrix)))

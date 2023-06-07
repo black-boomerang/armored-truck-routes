@@ -14,8 +14,7 @@ class Environment:
             armored_price=20_000,
             working_day_time=12 * 60,
             encashment_time=10
-        ):
-
+    ):
         self.non_cashable_loss_percent = non_cashable_loss_percent_per_year / 365
         self.cashable_loss_percent = cashable_loss_percent
         self.cashable_min_loss = cashable_min_loss
