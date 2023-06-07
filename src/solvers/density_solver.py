@@ -22,20 +22,30 @@ class DensitySolver(BaseSolver):
 
     def get_density(self, terminals: Optional[np.ndarray] = None) -> np.ndarray:
         """ Функция расчёта плотности """
+        max_days_terminals = (self.days_after_service >= self.environment.non_serviced_days).sum()
+        bad_limit_terminals = (self.remains > self.environment.terminal_limit).sum()
+
+        x = self.remains[terminals] / self.environment.terminal_limit
+        y = (self.days_after_service[terminals] + 1) / self.environment.non_serviced_days
         if terminals is None:
             terminals = np.arange(self.terminals_num)
         start_density = self.remains[terminals] / self.environment.terminal_limit
-        start_density += np.exp(25) * (self.remains[terminals] > self.environment.terminal_limit)
+        start_density += np.exp(25) * (self.remains[terminals] > self.environment.terminal_limit) # TODO: перебрать 25
         start_density += (self.days_after_service[terminals] + 1) / self.environment.non_serviced_days
-        start_density += np.exp(3 * (self.days_after_service[terminals] - 6)) * (self.days_after_service[terminals] > 6)
+        start_density += np.exp(3 * (self.days_after_service[terminals] - 6)) * (self.days_after_service[terminals] > 6) # TODO: перебрать 3 и 6
+        # start_density += np.exp((1 * self.remains[terminals] / self.environment.terminal_limit) ** 2)
         start_density = (start_density / np.linalg.norm(start_density)).clip(DensitySolver.EPSILON)
 
         sub_time_matrix = self.time_matrix[np.ix_(terminals, terminals)]
         sub_time_matrix = (sub_time_matrix / np.linalg.norm(sub_time_matrix, axis=1, keepdims=True, ord=1)).clip(
             DensitySolver.EPSILON)
+        # print((-sub_time_matrix / self.sigma).min(axis=1))
+        # print(np.log(start_density).max() - np.log(start_density).min())
         log_density = logsumexp(-sub_time_matrix + np.log(start_density)[None, :], axis=1)
+        # print(np.argmax(log_density))
         log_density += 1000 * (self.remains[terminals] > self.environment.terminal_limit)
         log_density += 1000 * (self.days_after_service[terminals] >= self.environment.non_serviced_days)
+        # print(log_density)
         return log_density
 
     def get_clusters(self, centers: np.ndarray) -> List[np.ndarray]:
@@ -78,7 +88,7 @@ class DensitySolver(BaseSolver):
         """ Выделяем кластер на основе времени ОТ терминала-центра """
         time_to_terminals = np.full(self.terminals_num, np.inf)
         time_to_terminals[terminals] = self.time_matrix[center, terminals]
-        neighbourhood = len(terminals) // (self.armored_num - cur_armored)
+        neighbourhood = len(terminals) // (self.armored_num - cur_armored) # TODO: попробовать константные значения neighbourhood
         return np.argpartition(time_to_terminals, neighbourhood)[:neighbourhood]
 
     def get_routes(self) -> List[List[int]]:
@@ -90,9 +100,11 @@ class DensitySolver(BaseSolver):
         cur_terminals = np.arange(self.terminals_num)
         routes = []
         for i in range(self.armored_num):
+            # print((self.remains[cur_terminals] > self.environment.terminal_limit).sum())
             density = np.full(self.terminals_num, -np.inf)
             density[cur_terminals] = self.get_density(cur_terminals)
             best_terminal = np.argmax(density)
+            # print(f'{best_terminal} {density[best_terminal]} {self.days_after_service[best_terminal]}')
             cluster = self.get_cluster(cur_terminals, best_terminal, i)
             routes.append(self.get_cluster_route(cluster, density))
             cur_terminals = np.setdiff1d(cur_terminals, np.array(routes[-1]))

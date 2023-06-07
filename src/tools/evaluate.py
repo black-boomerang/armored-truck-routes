@@ -1,9 +1,27 @@
+from typing import List
+
 import numpy as np
 import pandas as pd
 
-from src.solvers import BaseSolver
-from src.utils import save_map, create_gif
 from src.report import create_report, create_final_report, PathReporter
+from src.solvers import BaseSolver
+from src.task import Environment
+
+
+def get_losses(paths: List[List[int]], remains: np.ndarray, terminals_count: int,
+               environment: Environment) -> np.ndarray:
+    visited_path = set(np.concatenate(paths))
+    non_visited_paths = set(np.arange(terminals_count)).difference(visited_path)
+    visited_path, non_visited_paths = map(lambda x: np.array(list(x)), [visited_path, non_visited_paths])
+
+    cashable_loss = np.zeros(terminals_count)
+    cashable_loss[visited_path] = environment.get_cashable_loss(remains[visited_path])
+
+    non_cashable_loss = np.zeros(terminals_count)
+    non_cashable_loss[non_visited_paths] = environment.get_non_cashable_loss(remains[non_visited_paths])
+
+    total = np.sum(cashable_loss) + np.sum(non_cashable_loss)
+    return total
 
 
 def evaluate(solver: BaseSolver, terminals: pd.DataFrame, first_day: int = 1, last_day: int = 91) -> None:
@@ -26,7 +44,8 @@ def evaluate(solver: BaseSolver, terminals: pd.DataFrame, first_day: int = 1, la
         cashable.append(cashable_loss)
 
         non_cashable_loss = np.zeros(len(terminals))
-        non_cashable_loss[non_visited_paths] = solver.environment.get_non_cashable_loss(solver.remains[non_visited_paths])
+        non_cashable_loss[non_visited_paths] = solver.environment.get_non_cashable_loss(
+            solver.remains[non_visited_paths])
         non_cashable.append(non_cashable_loss)
 
         solver.update(terminals[f'day {day}'].values)

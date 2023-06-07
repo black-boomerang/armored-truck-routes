@@ -1,3 +1,5 @@
+from typing import Union
+
 import numpy as np
 
 
@@ -24,8 +26,8 @@ class Environment:
         self.working_day_time = working_day_time
         self.encashment_time = encashment_time
 
-    def get_non_cashable_loss(self, cash: float):
+    def get_non_cashable_loss(self, cash: Union[float, np.ndarray]):
         return self.non_cashable_loss_percent * cash
 
-    def get_cashable_loss(self, cash: float):
+    def get_cashable_loss(self, cash: Union[float, np.ndarray]):
         return np.maximum(self.cashable_loss_percent * cash, self.cashable_min_loss)
