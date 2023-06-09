@@ -19,10 +19,10 @@ class DensitySolver(BaseSolver):
                  business_logic: Environment,
                  armored_num: int = 10, 
                  sigma: float = 7000,
-                 tl: float = 25, 
-                 das_c1: float = 3, 
+                 tl: float = 25,
+                 das_c1: float = 4,
                  das_c2: float = 6, 
-                 das_c3: float = 6):
+                 das_c3: float = 4):
         super().__init__(remains, time_matrix, business_logic)
         self.armored_num = armored_num
         # константа, используемая при расчёте плотности (параметр гауссианы)
@@ -38,8 +38,8 @@ class DensitySolver(BaseSolver):
         max_days_terminals = (self.days_after_service >= self.environment.non_serviced_days).sum()
         bad_limit_terminals = (self.remains > self.environment.terminal_limit).sum()
 
-        x = self.remains[terminals] / self.environment.terminal_limit
-        y = (self.days_after_service[terminals] + 1) / self.environment.non_serviced_days
+        # x = self.remains[terminals] / self.environment.terminal_limit
+        # y = (self.days_after_service[terminals] + 1) / self.environment.non_serviced_days
         if terminals is None:
             terminals = np.arange(self.terminals_num)
         start_density = self.remains[terminals] / self.environment.terminal_limit
@@ -47,7 +47,7 @@ class DensitySolver(BaseSolver):
         start_density += (self.days_after_service[terminals] + 1) / self.environment.non_serviced_days
         start_density += np.exp(self.das_c1 * (self.days_after_service[terminals] - self.das_c2)) * (self.days_after_service[terminals] > self.das_c3) # TODO: перебрать 3 и 6
         # start_density += np.exp((1 * self.remains[terminals] / self.environment.terminal_limit) ** 2)
-        start_density = (start_density / np.linalg.norm(start_density)).clip(DensitySolver.EPSILON)
+        start_density = (start_density / np.linalg.norm(start_density, ord=1)).clip(DensitySolver.EPSILON)
 
         sub_time_matrix = self.time_matrix[np.ix_(terminals, terminals)]
         sub_time_matrix = (sub_time_matrix / np.linalg.norm(sub_time_matrix, axis=1, keepdims=True, ord=1)).clip(
@@ -110,7 +110,25 @@ class DensitySolver(BaseSolver):
         :return: список маршрутов для каждого броневика
         """
 
-        cur_terminals = np.arange(self.terminals_num)
+        remains = (self.environment.terminal_limit - self.remains) / self.environment.terminal_limit
+
+        times = self.days_after_service
+        assert times.max() <= self.environment.non_serviced_days
+
+        days_before_deadline = 1
+        idx = list(set(np.concatenate([
+            np.where(times == self.environment.non_serviced_days - days_before_deadline)[0],
+            np.where(remains < 0.1)[0]
+        ])))
+
+        assert len(idx) <= self.num_routes_per_day
+
+        times = times / self.environment.non_serviced_days
+        cost = times
+
+        idx = np.concatenate([np.argsort(-cost)[:(self.num_routes_per_day - len(idx))], idx]).astype(int)
+
+        cur_terminals = idx # np.arange(self.terminals_num)
         routes = []
         for i in range(self.armored_num):
             # print((self.remains[cur_terminals] > self.environment.terminal_limit).sum())

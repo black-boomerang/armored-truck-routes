@@ -18,7 +18,7 @@ class BaseSolver(ABC):
         self.days_after_service = np.zeros(self.terminals_num, dtype=int)
         self.environment = environment
 
-        self.num_routes_per_day = int(np.ceil(0.1 * len(time_matrix)))
+        self.num_routes_per_day = int(np.ceil(0.5 * len(time_matrix)))
 
     def update(self, incomes: Union[np.ndarray, pd.Series]) -> None:
         """ Обновить состояние решателя на новый день """
