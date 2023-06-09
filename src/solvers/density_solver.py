@@ -13,12 +13,25 @@ class DensitySolver(BaseSolver):
     """ Решение на основе плотности """
     EPSILON = 1e-9
 
-    def __init__(self, remains: np.ndarray, time_matrix: np.ndarray, business_logic: Environment,
-                 armored_num: int = 10, sigma: float = 7000):
+    def __init__(self, 
+                 remains: np.ndarray, 
+                 time_matrix: np.ndarray, 
+                 business_logic: Environment,
+                 armored_num: int = 10, 
+                 sigma: float = 7000,
+                 tl: float = 25, 
+                 das_c1: float = 3, 
+                 das_c2: float = 6, 
+                 das_c3: float = 6):
         super().__init__(remains, time_matrix, business_logic)
         self.armored_num = armored_num
         # константа, используемая при расчёте плотности (параметр гауссианы)
         self.sigma = sigma
+        
+        self.tl = tl
+        self.das_c1 = das_c1
+        self.das_c2 = das_c2
+        self.das_c3 = das_c3
 
     def get_density(self, terminals: Optional[np.ndarray] = None) -> np.ndarray:
         """ Функция расчёта плотности """
@@ -30,9 +43,9 @@ class DensitySolver(BaseSolver):
         if terminals is None:
             terminals = np.arange(self.terminals_num)
         start_density = self.remains[terminals] / self.environment.terminal_limit
-        start_density += np.exp(25) * (self.remains[terminals] > self.environment.terminal_limit) # TODO: перебрать 25
+        start_density += np.exp(self.tl) * (self.remains[terminals] > self.environment.terminal_limit) # TODO: перебрать 25
         start_density += (self.days_after_service[terminals] + 1) / self.environment.non_serviced_days
-        start_density += np.exp(3 * (self.days_after_service[terminals] - 6)) * (self.days_after_service[terminals] > 6) # TODO: перебрать 3 и 6
+        start_density += np.exp(self.das_c1 * (self.days_after_service[terminals] - self.das_c2)) * (self.days_after_service[terminals] > self.das_c3) # TODO: перебрать 3 и 6
         # start_density += np.exp((1 * self.remains[terminals] / self.environment.terminal_limit) ** 2)
         start_density = (start_density / np.linalg.norm(start_density)).clip(DensitySolver.EPSILON)
 
