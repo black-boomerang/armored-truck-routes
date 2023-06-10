@@ -15,7 +15,6 @@ def get_losses(paths: List[List[int]], remains: np.ndarray, environment: Environ
     terminals_count = len(remains)
     visited_terminals = set(np.concatenate(paths))
     non_visited_terminals = set(np.arange(terminals_count)).difference(visited_terminals)
-    non_visited_terminals = map(lambda x: np.array(list(x)), [visited_terminals, non_visited_terminals])
 
     # издержки на обслуживание терминалов
     visited_terminals = np.array(list(visited_terminals))
