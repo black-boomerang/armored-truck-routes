@@ -55,5 +55,3 @@ def evaluate(solver: BaseSolver, n_trucks, terminals: pd.DataFrame, first_day: i
     create_report(cashable, terminals, filename='стоимость инкассации')
     create_report(non_cashable, terminals, filename='стоимость фондирования')
     create_final_report(cashable, non_cashable, N=n_trucks)
-
-    # create_gif()

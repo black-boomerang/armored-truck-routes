@@ -22,7 +22,8 @@ class DensitySolver(BaseSolver):
                  tl: float = 25,
                  das_c1: float = 3,
                  das_c2: float = 6,
-                 das_c3: float = 6):
+                 das_c3: float = 6,
+                 day_part: float = 0.25):
         super().__init__(remains, time_matrix, business_logic, n_trucks)
 
         # гиперпараметры, используемые при расчёте плотности
@@ -33,7 +34,7 @@ class DensitySolver(BaseSolver):
         self.big_density = 1000
 
         # кол-во терминалов
-        self.num_routes_per_day = int(np.ceil(0.4 * self.terminals_num))
+        self.num_routes_per_day = int(np.ceil(day_part * self.terminals_num))
 
     def get_density(self, terminals: Optional[np.ndarray] = None) -> np.ndarray:
         """ Функция расчёта плотности """
