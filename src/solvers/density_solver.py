@@ -18,12 +18,12 @@ class DensitySolver(BaseSolver):
                  remains: np.ndarray,
                  time_matrix: np.ndarray,
                  business_logic: Environment,
-                 armored_num: int = 10,
+                 n_trucks: int = 10,
                  tl: float = 25,
                  das_c1: float = 3,
                  das_c2: float = 6,
                  das_c3: float = 6):
-        super().__init__(remains, time_matrix, business_logic, armored_num)
+        super().__init__(remains, time_matrix, business_logic, n_trucks)
 
         # гиперпараметры, используемые при расчёте плотности
         self.tl = tl
@@ -107,7 +107,7 @@ class DensitySolver(BaseSolver):
 
         # окрестность терминала зависит от кол-ва оставшихся броневиков
         # (для последнего окрестность равна множеству всех оставшихся терминалов)
-        neighbourhood = len(terminals) // (self.armored_num - cur_armored)
+        neighbourhood = len(terminals) // (self.n_trucks - cur_armored)
         return np.argpartition(time_to_terminals, neighbourhood)[:neighbourhood]
 
     def get_routes(self) -> List[List[int]]:
@@ -125,7 +125,7 @@ class DensitySolver(BaseSolver):
 
         routes = []
         # итеративно для каждого броневика набираем терминалы для объезда
-        for i in range(self.armored_num):
+        for i in range(self.n_trucks):
             # оцениваем "плотность" (или "важность") каждого терминала
             density = np.full(self.terminals_num, -np.inf)
             density[cur_terminals] = self.get_density(cur_terminals)

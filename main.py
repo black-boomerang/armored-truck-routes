@@ -26,12 +26,12 @@ def main(config=None):
     )
 
     if model_config['solver'] == 'clustering':
-        solver = ClusteringSolver(terminals['start_value'].values, time_matrix, environment)
+        solver = ClusteringSolver(terminals['start_value'].values, time_matrix, environment, model_config['n_trucks'])
     elif model_config['solver'] == 'density':
-        solver = DensitySolver(terminals['start_value'].values, time_matrix, environment)
+        solver = DensitySolver(terminals['start_value'].values, time_matrix, environment, model_config['n_trucks'])
     else:
         assert False, 'Некорректная модель'
-    evaluate(solver, terminals, 1, 91)
+    evaluate(solver, model_config['n_trucks'], terminals, 1, 91)
 
 
 if __name__ == "__main__":

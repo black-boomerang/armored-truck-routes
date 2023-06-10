@@ -6,6 +6,7 @@ import pandas as pd
 from src.report import create_report, create_final_report, PathReporter
 from src.solvers import BaseSolver
 from src.task import Environment
+from tqdm import trange
 
 
 def get_losses(paths: List[List[int]], remains: np.ndarray, environment: Environment) -> Tuple[
@@ -30,14 +31,14 @@ def get_losses(paths: List[List[int]], remains: np.ndarray, environment: Environ
     return cashable_loss, non_cashable_loss, total
 
 
-def evaluate(solver: BaseSolver, terminals: pd.DataFrame, first_day: int = 1, last_day: int = 91) -> None:
+def evaluate(solver: BaseSolver, n_trucks, terminals: pd.DataFrame, first_day: int = 1, last_day: int = 91) -> None:
     """ Оценка издержек для заданного решателя """
-    reported = PathReporter(n_trucks=9, terminal_ids=terminals['TID'], time_matrix=solver.time_matrix)
+    reported = PathReporter(n_trucks=n_trucks, terminal_ids=terminals['TID'], time_matrix=solver.time_matrix)
 
     remains = []
     cashable = []
     non_cashable = []
-    for day in range(first_day, last_day + 1):
+    for day in trange(first_day, last_day + 1):
         # получаем маршруты на день
         paths = solver.get_routes()
 
@@ -53,4 +54,6 @@ def evaluate(solver: BaseSolver, terminals: pd.DataFrame, first_day: int = 1, la
     create_report(remains, terminals, filename='остатки на конец дня')
     create_report(cashable, terminals, filename='стоимость инкассации')
     create_report(non_cashable, terminals, filename='стоимость фондирования')
-    create_final_report(cashable, non_cashable, N=9)
+    create_final_report(cashable, non_cashable, N=n_trucks)
+
+    # create_gif()

@@ -8,14 +8,14 @@ class Environment:
 
     def __init__(
             self,
-            non_cashable_loss_percent_per_year=0.02,
-            cashable_loss_percent=0.01 / 100,
-            cashable_min_loss=100,
-            non_serviced_days=14,
-            terminal_limit=1_000_000,
-            armored_price=20_000,
-            working_day_time=12 * 60,
-            encashment_time=10
+            non_cashable_loss_percent_per_year=0.02, # годовой процент за отсутсвие инкассации
+            cashable_loss_percent=0.01 / 100, # процент за обслуживание терминала
+            cashable_min_loss=100, # минимальный налог на обслуживание
+            non_serviced_days=14, # максимальное число дней на отсутсвие обслуживания
+            terminal_limit=1_000_000, # максимально допустимая сумма в терминале
+            armored_price=20_000, # цена 1 броневика
+            working_day_time=12 * 60, # время работы 1 броневика (в минутах)
+            encashment_time=10 # время на обслуживание терминала
     ):
         self.non_cashable_loss_percent = non_cashable_loss_percent_per_year / 365
         self.cashable_loss_percent = cashable_loss_percent
