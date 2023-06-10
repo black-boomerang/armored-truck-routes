@@ -1,1 +1,1 @@
-from src.tools.evaluate import evaluate
+from src.tools.evaluate import evaluate, get_losses
