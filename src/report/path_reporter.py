@@ -2,7 +2,8 @@ import os
 from typing import List
 import numpy as np
 import pandas as pd
-from datetime import datetime
+import warnings
+warnings.filterwarnings('ignore')
 
 
 class PathReporter:
@@ -41,7 +42,7 @@ class PathReporter:
         
         for i, root in enumerate(roots):
             
-            start_time = pd.to_datetime(day) + pd.Timedelta('09:00:00')
+            start_time = pd.to_datetime(day, format='%d/%m/%y') + pd.Timedelta('09:00:00')
             
             path_time = 0
             
