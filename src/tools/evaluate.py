@@ -6,6 +6,7 @@ import pandas as pd
 from src.report import create_report, create_final_report, PathReporter
 from src.solvers import BaseSolver
 from src.task import Environment
+from tqdm import trange
 
 
 def get_losses(paths: List[List[int]], remains: np.ndarray, environment: Environment) -> Tuple[
@@ -37,7 +38,7 @@ def evaluate(solver: BaseSolver, n_trucks, terminals: pd.DataFrame, first_day: i
     remains = []
     cashable = []
     non_cashable = []
-    for day in range(first_day, last_day + 1):
+    for day in trange(first_day, last_day + 1):
         # получаем маршруты на день
         paths = solver.get_routes()
 

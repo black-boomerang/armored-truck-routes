@@ -1,6 +1,6 @@
 model:
-    solver: clustering
-    n_trucks: 7
+    solver: density
+    n_trucks: 5
 
 data:
     path: data
