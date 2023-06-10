@@ -20,9 +20,9 @@ class DensitySolver(BaseSolver):
                  armored_num: int = 10, 
                  sigma: float = 7000,
                  tl: float = 25,
-                 das_c1: float = 4,
+                 das_c1: float = 3,
                  das_c2: float = 6, 
-                 das_c3: float = 4):
+                 das_c3: float = 6):
         super().__init__(remains, time_matrix, business_logic)
         self.armored_num = armored_num
         # константа, используемая при расчёте плотности (параметр гауссианы)
@@ -110,37 +110,86 @@ class DensitySolver(BaseSolver):
         :return: список маршрутов для каждого броневика
         """
 
-        remains = (self.environment.terminal_limit - self.remains) / self.environment.terminal_limit
+        if self.day < 90:
+            from tqdm.notebook import tqdm
+            if self.day < 10:
+                ds, rs = [1], [0.7]
+            elif 10 <= self.day < 35:
+                ds, rs = [3], [0.2]
+            else:
+                ds, rs = np.arange(1, 15), np.arange(0, 1.1, 0.1)
+            values = list(itertools.product(ds, rs))
 
-        times = self.days_after_service
-        assert times.max() <= self.environment.non_serviced_days
+            all_routes = []
+            for d, r in tqdm(values):
+                remains = (self.environment.terminal_limit - self.remains) / self.environment.terminal_limit
 
-        days_before_deadline = 1
-        idx = list(set(np.concatenate([
-            np.where(times == self.environment.non_serviced_days - days_before_deadline)[0],
-            np.where(remains < 0.1)[0]
-        ])))
+                times = self.days_after_service
+                assert times.max() <= self.environment.non_serviced_days
 
-        assert len(idx) <= self.num_routes_per_day
+                days_before_deadline = d
+                idx = list(set(np.concatenate([
+                    np.where(times >= self.environment.non_serviced_days - days_before_deadline)[0],
+                    np.where(remains < r)[0]
+                ])))
 
-        times = times / self.environment.non_serviced_days
-        cost = times
+                times = times / self.environment.non_serviced_days
+                cost = times
+                
+                start_val = len(idx) + 10
 
-        idx = np.concatenate([np.argsort(-cost)[:(self.num_routes_per_day - len(idx))], idx]).astype(int)
+                routes = []
+                while len(routes) == 0:
+                    cur_terminals = np.concatenate([np.argsort(-cost)[:(start_val - len(idx))], idx])
+                    for i in range(self.armored_num):
 
-        cur_terminals = idx # np.arange(self.terminals_num)
-        routes = []
-        for i in range(self.armored_num):
-            # print((self.remains[cur_terminals] > self.environment.terminal_limit).sum())
-            density = np.full(self.terminals_num, -np.inf)
-            density[cur_terminals] = self.get_density(cur_terminals)
-            best_terminal = np.argmax(density)
-            # print(f'{best_terminal} {density[best_terminal]} {self.days_after_service[best_terminal]}')
-            cluster = self.get_cluster(cur_terminals, best_terminal, i)
-            routes.append(self.get_cluster_route(cluster, density))
-            cur_terminals = np.setdiff1d(cur_terminals, np.array(routes[-1]))
-            if len(cur_terminals) == 0:
-                break
+                        density = np.full(self.terminals_num, -np.inf)
+                        density[cur_terminals] = self.get_density(cur_terminals)
+                        best_terminal = np.argmax(density)
+ 
+                        cluster = self.get_cluster(cur_terminals, best_terminal, i)
+                        routes.append(self.get_cluster_route(cluster, density))
+                        cur_terminals = np.setdiff1d(cur_terminals, np.array(routes[-1]))
+                        if len(cur_terminals) == 0:
+                            break
+
+                    if len(list(itertools.chain(*routes))) == len(cur_terminals):
+                        routes = []
+                        start_val += 10
+
+                remains_before = self.remains[list(itertools.chain(*routes))]
+                days_before = self.days_after_service[list(itertools.chain(*routes))]
+
+                self.remains[list(itertools.chain(*routes))] = 0.0
+                self.days_after_service[list(itertools.chain(*routes))] = -1
+
+                max_days_terminals = (self.days_after_service >= self.environment.non_serviced_days).sum()
+                bad_limit_terminals = (self.remains > self.environment.terminal_limit).sum()
+
+                self.remains[list(itertools.chain(*routes))] = remains_before
+                self.days_after_service[list(itertools.chain(*routes))] = days_before
+
+                all_routes.append((routes, len(list(itertools.chain(*routes))) * (max_days_terminals == 0) * (bad_limit_terminals == 0)))
+
+            all_routes.sort(key=lambda x: -x[1])
+            routes = all_routes[0][0]
+            assert all_routes[0][1] > 0, 'No candidates'
+
+        else:
+            routes = []
+            cur_terminals = np.arange(self.terminals_num)
+            for i in range(self.armored_num):
+
+                density = np.full(self.terminals_num, -np.inf)
+                density[cur_terminals] = self.get_density(cur_terminals)
+                best_terminal = np.argmax(density)
+
+                cluster = self.get_cluster(cur_terminals, best_terminal, i)
+                routes.append(self.get_cluster_route(cluster, density))
+                cur_terminals = np.setdiff1d(cur_terminals, np.array(routes[-1]))
+                if len(cur_terminals) == 0:
+                    break
+
         self.remains[list(itertools.chain(*routes))] = 0.0
         self.days_after_service[list(itertools.chain(*routes))] = -1
 

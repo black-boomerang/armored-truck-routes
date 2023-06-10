@@ -1,5 +1,6 @@
 model:
     solver: clustering
+    n_trucks: 7
 
 data:
     path: data

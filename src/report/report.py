@@ -3,6 +3,11 @@ import pandas as pd
 
 
 def create_report(data, terminals, filename):
+
+    '''
+        Функция для формирования промежуточных отчетов
+    '''
+    
     data = np.stack(data, axis=1)
     df = pd.DataFrame()
     df['устройство'] = terminals['TID']
@@ -14,6 +19,11 @@ def create_report(data, terminals, filename):
 
 
 def create_final_report(cashable, non_cashable, N=10):
+
+    '''
+        Функция для формирования финального отчета
+    '''
+
     cashable = np.sum(cashable, axis=1)
     non_cashable = np.sum(non_cashable, axis=1)
     total = cashable + non_cashable + N * 20000

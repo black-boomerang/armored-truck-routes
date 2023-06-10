@@ -24,9 +24,9 @@ def get_losses(paths: List[List[int]], remains: np.ndarray, terminals_count: int
     return total
 
 
-def evaluate(solver: BaseSolver, terminals: pd.DataFrame, first_day: int = 1, last_day: int = 91) -> None:
+def evaluate(solver: BaseSolver, n_trucks, terminals: pd.DataFrame, first_day: int = 1, last_day: int = 91) -> None:
     """ Оценка издержек для заданного решателя """
-    reported = PathReporter(n_trucks=9, terminal_ids=terminals['TID'], time_matrix=solver.time_matrix)
+    reported = PathReporter(n_trucks=n_trucks, terminal_ids=terminals['TID'], time_matrix=solver.time_matrix)
 
     remains = []
     cashable = []
@@ -55,6 +55,6 @@ def evaluate(solver: BaseSolver, terminals: pd.DataFrame, first_day: int = 1, la
     create_report(remains, terminals, filename='остатки на конец дня')
     create_report(cashable, terminals, filename='стоимость инкассации')
     create_report(non_cashable, terminals, filename='стоимость фондирования')
-    create_final_report(cashable, non_cashable, N=9)
+    create_final_report(cashable, non_cashable, N=n_trucks)
 
     # create_gif()

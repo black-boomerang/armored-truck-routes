@@ -1,8 +1,10 @@
 import numpy as np
-from tqdm import trange
+import networkx as nx
 from scipy.spatial.distance import pdist
 
 from src.clustering.prims_algorithm import mst_prims_algorithm
+
+tsp = nx.approximation.traveling_salesman_problem
 
 
 class STPClustering:
@@ -18,6 +20,11 @@ class STPClustering:
         self.mst = None
 
     def _total_weight(self):
+
+        '''
+            Функция подсчета общего веса дерева и формирования списка ребер
+        '''
+
         edges = []
         for i in range(len(self.mst)):
             for j in self.mst[i]:
@@ -29,6 +36,11 @@ class STPClustering:
         return total, edges
 
     def _optimal_cutting(self, i, visited, weights, total_weight):
+
+        '''
+            Функция для определения оптимального разреза на основе алгоритма DFS
+        '''
+
         visited[i] = True
         total = 0
         for j in self.mst[i]:
@@ -41,18 +53,11 @@ class STPClustering:
 
         return total
 
-    def _dfs(self, i, bridges, visited, points):
-        visited[i] = 1
-        points.append(i)
-        total = 0
-        for j in self.mst[i]:
-            if not visited[j] and (i, j) not in bridges and (j, i) not in bridges:
-                local = self._dfs(j, bridges, visited, points)
-                total += local + self.distances[i, j] + 10
-
-        return total
-
     def _fit(self, X):
+
+        '''
+            "Обучение" алгоритма - построение минимального остовного дерева алгоритмом Прима
+        '''
 
         if self.metric == 'precomputed':
             distances = X
@@ -63,8 +68,33 @@ class STPClustering:
         self.mst = mst_prims_algorithm(distances)
 
         return self
+    
+    def tsp_solution(self, distances):
 
-    def _predict(self, max_length):
+        '''
+            Решение задачи коммивояжера алгоритмом Кристифодеса
+        '''
+
+        sym_distances = np.maximum(np.tril(distances), np.triu(distances).T)
+        sym_distances = sym_distances + sym_distances.T
+        G = nx.from_numpy_array(sym_distances)
+
+        if sym_distances.shape[0] > 1:
+            path = tsp(G, cycle=False)
+        else:
+            path = [0]
+
+        src, dst = path[:-1], path[1:]
+        elapsed = (distances[src, dst]).sum() + 10 * len(path)
+            
+        return path, elapsed
+    
+    def _find_optimal_cutting(self, max_length):
+
+        '''
+            Функция для инициализации и постпроцессинга алгоритма по определению оптимального разреза
+        '''
+
         total, edges = self._total_weight()
 
         visited = np.zeros(len(self.distances))
@@ -75,23 +105,95 @@ class STPClustering:
         opt_idx = rows[opt_idx], cols[opt_idx]
         assert opt_idx in edges or opt_idx[::-1] in edges
 
-        points1, points2 = [], []
-        visited = np.zeros(len(self.distances))
-        s1 = self._dfs(opt_idx[0], [opt_idx], visited, points1)
-        s2 = self._dfs(opt_idx[1], [opt_idx], visited, points2)
-
-        if s1 < max_length and s2 < max_length:
-            return np.array(points1), np.array(points2)
-
-        clusters = np.array(points1) if s1 < s2 else np.array(points2)
-
-        return clusters, None
+        return opt_idx
     
-    def fit_predict(self, time_matrix):
+    def _get_subtree_weight(self, i, bridges, visited, points):
+
+        '''
+            Функция для обхода поддерева на основе алгоритма DFS
+        '''
+
+        visited[i] = 1
+        points.append(i)
+        total = 0
+        for j in self.mst[i]:
+            if not visited[j] and (i, j) not in bridges and (j, i) not in bridges:
+                local = self._get_subtree_weight(j, bridges, visited, points)
+                total += local + self.distances[i, j] + 10
+
+        return total
+    
+    def _tree_cutting(self, opt_idx):
+
+        '''
+            Разбиение дерева на основе оптимального разреза
+        '''
+
+        set1, set2 = [], []
+        visited = np.zeros(len(self.distances))
+        weight1 = self._get_subtree_weight(opt_idx[0], [opt_idx], visited, set1)
+        weight2 = self._get_subtree_weight(opt_idx[1], [opt_idx], visited, set2)
+
+        return weight1, weight2, set1, set2
+    
+    def _increase_cluster(self, cluster):
+
+        '''
+            Функция для увеличения размера кластера
+        '''
+
+        while True:
+            dst = np.argsort(self.distances[cluster], axis=1)
+
+            candidates = []
+            for row in dst:
+                for v in row:
+                    if v not in cluster:
+                        candidates.append(v)
+                        break
+
+            dst = np.array(candidates)
+            candidate = dst[self.distances[cluster, dst].argmin()]
+            cluster_ = np.append(cluster, candidate)
+            if self.tsp_solution(self.distances[np.ix_(cluster_, cluster_)])[1] < 720:
+                cluster = cluster_
+            else:
+                break
+
+        return cluster
+
+    def _predict(self, max_length):
+
+        '''
+            "Предсказание" алгоритма - выделение кластера наибольшего веса, не превышающего заданного
+        '''
+
+        opt_idx = self._find_optimal_cutting(max_length)
+        weight1, weight2, set1, set2 = self._tree_cutting(opt_idx)
+        
+        if weight1 < max_length and weight2 < max_length:
+            cluster = np.array(set1 + set2)
+            if self.tsp_solution(self.distances[np.ix_(cluster, cluster)])[1] < 720: # если укладываемся в 12 часов, то совмещаем оба множества
+                return cluster, None, True
+            else:
+                return set1, set2, True # ...иначе оставляем 2 исходных
+
+        cluster = np.array(set1) if weight1 < weight2 else np.array(set2)
+        cluster = self._increase_cluster(cluster) # пытаемся увеличить кластер
+        return cluster, None, False
+    
+
+    def _clustering(self, time_matrix):
+
+        '''
+            Функция кластеризации
+        '''
+
         time_matrix_copy = time_matrix.copy()
         rests = [np.arange(len(time_matrix_copy))]
-        clusters_ = []
+        clusters = []
 
+        merge_last = True
         while True:
 
             if self.symmetric:
@@ -100,33 +202,54 @@ class STPClustering:
             else:
                 inputs = time_matrix_copy
 
-            cluster = self._fit(inputs)._predict(max_length=self.max_length)
-            if cluster[1] is None:
-                cluster = cluster[0]
-                clusters_.append(cluster)
+            cluster1, cluster2, finish = self._fit(inputs)._predict(max_length=self.max_length)
+            if cluster2 is None:
+                cluster = cluster1
+                clusters.append(cluster1)
             else:
-                clusters_.extend(cluster)
+                merge_last = False
+                clusters.extend([cluster1, cluster2])
+            
+            if finish:
                 break
             
             rest = np.array(list(set(np.arange(len(time_matrix_copy))).difference(cluster)))
             time_matrix_copy = time_matrix_copy[np.ix_(rest, rest)]
             rests.append(rest)
 
-        clusters_ = clusters_[::-1]
+        clusters = clusters[::-1]
         rests = rests[::-1]
+        return clusters, rests, merge_last
 
-        clusters = []
-        for i in range(len(clusters_)):
-            cluster = clusters_[i]
+    def _remap_idx(self, clusters, rests, merge_last):
 
-            if i > 0:
+        '''
+            Функция кластеризации
+        '''
+
+        clusters_ = []
+        for i in range(len(clusters)):
+            cluster = clusters[i]
+
+            if i > 0 and not merge_last:
                 i -= 1
 
             for r in rests[i:]:
                 cluster = r[cluster]
 
-            clusters.append(cluster)
-            assert len(list(set().union(*clusters))) == sum([len(c) for c in clusters])
+            clusters_.append(cluster)
+            assert len(list(set().union(*clusters_))) == sum([len(c) for c in clusters_])
+
+        return clusters_
+    
+    def fit_predict(self, time_matrix):
+
+        '''
+            Функция кластеризации
+        '''
+
+        clusters, rests, merge_last = self._clustering(time_matrix) # выполняем кластеризацию
+        clusters = self._remap_idx(clusters, rests, merge_last) # возвращаемся к исходным индексам
 
         return clusters
         
