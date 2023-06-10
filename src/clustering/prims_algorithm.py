@@ -2,6 +2,10 @@ import heapq
 
 
 def construct_tree(edges, N):
+    '''
+        Функция формирования дерева из списка ребер
+    '''
+
     tree = [[] for _ in range(N)]
     for i, j in edges:
         if i != j:
@@ -15,6 +19,10 @@ def construct_tree(edges, N):
 
 
 def mst_prims_algorithm(distances):
+    '''
+        based on https://en.wikipedia.org/wiki/Prim%27s_algorithm
+    '''
+
     mst = []
     visited = [False] * len(distances)
     edges = [(distances[0, to], 0, to) for to in range(len(distances))]

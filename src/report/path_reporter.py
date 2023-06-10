@@ -6,6 +6,7 @@ from datetime import datetime
 
 
 class PathReporter:
+    """ Класс для формирования отчета по маршрутам """
     
     def __init__(self, 
                  n_trucks: int, 
@@ -24,10 +25,12 @@ class PathReporter:
     
     def evaluate(self, roots: List[List[int]], day: int):
         
-        columns = ['порядковый номер броневика',
-                   'устройство',
-                   'дата-время прибытия',
-                   'дата-время отъезда']
+        columns = [
+            'порядковый номер броневика',
+            'устройство',
+            'дата-время прибытия',
+            'дата-время отъезда'
+        ]
         
         day = self.date_range[day - 1]
         
@@ -43,9 +46,7 @@ class PathReporter:
             path_time = 0
             
             for j, t in enumerate(root):
-                
-                terminal_id = self.terminal_ids[t]
-              
+
                 arr_time = (start_time + 
                             pd.Timedelta(path_time, unit='m') + 
                             pd.Timedelta(j * self.service_time, unit='m'))
