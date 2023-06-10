@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -8,20 +8,27 @@ from src.solvers import BaseSolver
 from src.task import Environment
 
 
-def get_losses(paths: List[List[int]], remains: np.ndarray, terminals_count: int,
-               environment: Environment) -> np.ndarray:
-    visited_path = set(np.concatenate(paths))
-    non_visited_paths = set(np.arange(terminals_count)).difference(visited_path)
-    visited_path, non_visited_paths = map(lambda x: np.array(list(x)), [visited_path, non_visited_paths])
+def get_losses(paths: List[List[int]], remains: np.ndarray, environment: Environment) -> Tuple[
+    np.ndarray, np.ndarray, float]:
+    """ Вычисление издержек за заданный день с учётом остатков в терминалах и пройденных маршрутов """
 
+    terminals_count = len(remains)
+    visited_terminals = set(np.concatenate(paths))
+    non_visited_terminals = set(np.arange(terminals_count)).difference(visited_terminals)
+    non_visited_terminals = map(lambda x: np.array(list(x)), [visited_terminals, non_visited_terminals])
+
+    # издержки на обслуживание терминалов
+    visited_terminals = np.array(list(visited_terminals))
     cashable_loss = np.zeros(terminals_count)
-    cashable_loss[visited_path] = environment.get_cashable_loss(remains[visited_path])
+    cashable_loss[visited_terminals] = environment.get_cashable_loss(remains[visited_terminals])
 
+    # издержки на деньги, оставшиеся в терминалах
+    non_visited_terminals = np.array(list(non_visited_terminals))
     non_cashable_loss = np.zeros(terminals_count)
-    non_cashable_loss[non_visited_paths] = environment.get_non_cashable_loss(remains[non_visited_paths])
+    non_cashable_loss[non_visited_terminals] = environment.get_non_cashable_loss(remains[non_visited_terminals])
 
     total = np.sum(cashable_loss) + np.sum(non_cashable_loss)
-    return total
+    return cashable_loss, non_cashable_loss, total
 
 
 def evaluate(solver: BaseSolver, terminals: pd.DataFrame, first_day: int = 1, last_day: int = 91) -> None:
@@ -32,29 +39,19 @@ def evaluate(solver: BaseSolver, terminals: pd.DataFrame, first_day: int = 1, la
     cashable = []
     non_cashable = []
     for day in range(first_day, last_day + 1):
+        # получаем маршруты на день
         paths = solver.get_routes()
-        visited_path = set(np.concatenate(paths))
-        non_visited_paths = set(np.arange(len(terminals))).difference(visited_path)
-        visited_path, non_visited_paths = map(lambda x: np.array(list(x)), [visited_path, non_visited_paths])
 
+        # посчитываем издержки
+        cashable_loss, non_cashable_loss, total = get_losses(paths, solver.remains, solver.environment)
         remains.append(solver.remains)
-
-        cashable_loss = np.zeros(len(terminals))
-        cashable_loss[visited_path] = solver.environment.get_cashable_loss(solver.remains[visited_path])
         cashable.append(cashable_loss)
-
-        non_cashable_loss = np.zeros(len(terminals))
-        non_cashable_loss[non_visited_paths] = solver.environment.get_non_cashable_loss(
-            solver.remains[non_visited_paths])
         non_cashable.append(non_cashable_loss)
 
         solver.update(terminals[f'day {day}'].values)
         reported.evaluate(paths, day=day)
-        # save_map(paths, terminals, day)
 
     create_report(remains, terminals, filename='остатки на конец дня')
     create_report(cashable, terminals, filename='стоимость инкассации')
     create_report(non_cashable, terminals, filename='стоимость фондирования')
     create_final_report(cashable, non_cashable, N=9)
-
-    # create_gif()
