@@ -23,7 +23,7 @@ class DensitySolver(BaseSolver):
                  das_c1: float = 3,
                  das_c2: float = 6,
                  das_c3: float = 6,
-                 day_part: float = 0.3):
+                 day_part: float = 0.25):
         super().__init__(remains, time_matrix, business_logic, n_trucks)
 
         # гиперпараметры, используемые при расчёте плотности
